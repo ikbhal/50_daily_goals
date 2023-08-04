@@ -1,0 +1,38 @@
+App.css
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .add-goal {
+    display: flex;
+    margin-bottom: 20px;
+  }
+  
+  .add-goal input {
+    flex-grow: 1;
+    margin-right: 10px;
+  }
+  
+  .two-column-layout {
+    display: flex;
+  }
+  
+  .goals-column {
+    flex: 1;
+    list-style: none;
+    padding: 0;
+  }
+  
+  .notes-column {
+    flex: 1;
+    padding: 0 20px;
+  }
+  
+  .notes-column textarea {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  
