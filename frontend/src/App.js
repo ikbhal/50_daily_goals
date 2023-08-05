@@ -3,6 +3,9 @@ import styled from 'styled-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStickyNote, faTrash , faPlus} from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
+const isProduction = process.env.NODE_ENV === 'production';
+const baseURL = isProduction ? 'http://50dailygoals.rontohub.com/api/goals' : 'http://localhost:3015/api/goals';
+
 
 const Container = styled.div`
   max-width: 800px;
@@ -118,7 +121,8 @@ const App = () => {
 
   useEffect(() => {
     // Fetch goals from the backend API
-    axios.get('http://localhost:3015/api/goals')
+    // axios.get('http://localhost:3015/api/goals')
+    axios.get(baseURL)
       .then((response) => {
         setGoals(response.data);
       })
@@ -143,7 +147,8 @@ const App = () => {
       orderNumber: goals.length, // Assuming orderNumber should be the index in the goals array
     };
   
-    axios.post('http://localhost:3015/api/goals', newGoalData)
+    // axios.post('http://localhost:3015/api/goals', newGoalData)
+    axios.post(baseURL, newGoalData)
       .then((response) => {
         // Upon successful addition on the server, add the new goal to the state
         setGoals([...goals, response.data]);
@@ -160,7 +165,8 @@ const App = () => {
     const goalId = goals[index].id; // Assuming the goal has an "id" property received from the server
   
     // Send a DELETE request to the server to delete the goal
-    axios.delete(`http://localhost:3015/api/goals/${goalId}`)
+    // axios.delete(`http://localhost:3015/api/goals/${goalId}`)
+    axios.delete(`${baseURL}/${goalId}`)
       .then((response) => {
         // Upon successful deletion on the server, remove the goal from the state
         const updatedGoals = goals.filter((goal) => goal.id !== goalId);
@@ -183,7 +189,8 @@ const App = () => {
     setGoals(updatedGoals);
   
     // Send a PUT request to the server to update the completion status
-    axios.put(`http://localhost:3015/api/goals/${goalId}/toggledone`)
+    // axios.put(`http://localhost:3015/api/goals/${goalId}/toggledone`)
+    axios.put(`${baseURL}/${goalId}/toggledone`)
       .then((response) => {
         // Optionally, you can handle the response from the server
         console.log('Goal completion status updated successfully:', response.data);
@@ -210,7 +217,8 @@ const App = () => {
     const goalId = goals[index].id;
     const updatedNotes = goals[index].note;
     
-    axios.put(`http://localhost:3015/api/goals/${goalId}/notes`, { notes: updatedNotes })
+    // axios.put(`http://localhost:3015/api/goals/${goalId}/notes`, { notes: updatedNotes })
+    axios.put(`${baseURL}/${goalId}/notes`, { notes: updatedNotes })
       .then((response) => {
         // Optionally, you can handle the response from the server
         console.log('Notes updated successfully:', response.data);
