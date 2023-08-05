@@ -31,9 +31,11 @@ app.use(express.json());
 // API route to add a new goal
 app.post('/api/goals', (req, res) => {
   const { name, notes, orderNumber } = req.body;
+  console.log("req.body", req.body)
+  console.log("name", name, ",", "notes", notes, ",", "orderNumber", orderNumber);
 
-  if (!name || !orderNumber) {
-    return res.status(400).json({ error: 'Name and order number are required' });
+  if (!name ) {
+    return res.status(400).json({ error: 'Name required' });
   }
 
   db.run(
@@ -64,6 +66,53 @@ app.delete('/api/goals/:id', (req, res) => {
   });
 });
 
+// API update  goal check or uncheck status
+// add done column to goals table
+app.put('/api/goals/:id/toggledone', (req, res) => {
+  const id = req.params.id;
+   db.serialize(() => {
+    // Fetch the goal by id
+    db.get('SELECT * FROM goals WHERE id = ?', id, (err, row) => {
+      if (err) {
+        console.error('Error fetching goal:', err);
+        res.status(500).json({ error: 'Failed to update goal done' });
+      } else if (!row) {
+        console.log('Goal not found');
+        res.status(500).json({ error: 'Goal not found' });
+      } else {
+        console.log('Fetched goal:', row);
+
+        // Update the "done" value
+        const newDoneValue = row.done === 1 ? 0 : 1;
+        db.run('UPDATE goals SET done = ? WHERE id = ?', [newDoneValue, id], (updateErr) => {
+          if (updateErr) {
+            console.error('Error updating goal:', updateErr);
+            res.status(500).json({ error: 'Failed to update goal done' });
+          } else {
+            console.log('Updated "done" value successfully.');
+            res.json({ message: 'Goal done updated successfully' });
+          }
+        });
+      }
+    });
+  });
+});
+
+// API route to update goal orderNumber
+app.put('/api/goals/:id/orderNumber', (req, res) => {
+  const id = req.params.id;
+  const { orderNumber } = req.body;
+  // update in db  
+  db.run('UPDATE goals SET orderNumber = ? WHERE id = ?', [orderNumber, id], (err) => {
+    if (err) {
+      console.error('Error updating goal orderNumber:', err.message);
+      res.status(500).json({ error: 'Failed to update goal orderNumber' });
+    } else {
+      res.json({ message: 'Goal orderNumber updated successfully' });
+    }
+  });
+});
+
 // API route to update goal notes
 app.put('/api/goals/:id/notes', (req, res) => {
   const id = req.params.id;
@@ -79,19 +128,54 @@ app.put('/api/goals/:id/notes', (req, res) => {
   });
 });
 
-// API route to update main notes
-app.put('/api/notes', (req, res) => {
-  const { mainNotes } = req.body;
-
-  db.run('UPDATE mainNotes SET notes = ?', [mainNotes], (err) => {
+// API route to get main notes
+// TODO create mainNotes table
+app.get('/api/notes', (req, res) => {
+  db.get('SELECT * FROM notes', (err, row) => {
     if (err) {
-      console.error('Error updating main notes:', err.message);
-      res.status(500).json({ error: 'Failed to update main notes' });
+      console.error('Error fetching main notes:', err.message);
+      res.status(500).json({ error: 'Failed to fetch main notes' });
     } else {
-      res.json({ message: 'Main notes updated successfully' });
+      res.json(row);
     }
   });
 });
+// API route to update main notes
+app.put('/api/notes', (req, res) => {
+  const { text } = req.body;
+
+  // Check if any row exists in the "notes" table
+  db.get('SELECT * FROM notes LIMIT 1', (err, row) => {
+    if (err) {
+      console.error('Error fetching notes:', err.message);
+      res.status(500).json({ error: 'Failed to fetch notes' });
+    } else {
+      // If the row does not exist, insert a new row with the provided note
+      if (!row) {
+        db.run('INSERT INTO notes (text) VALUES (?)', [text], (insertErr) => {
+          if (insertErr) {
+            console.error('Error inserting note:', insertErr.message);
+            res.status(500).json({ error: 'Failed to insert note' });
+          } else {
+            res.json({ message: 'New note added successfully' });
+          }
+        });
+      } else {
+        const existingId = row.id;
+        // If the row exists, update the existing note with the provided one
+        db.run('UPDATE notes SET text = ? WHERE id = ?', [text, existingId], (updateErr) => {
+          if (updateErr) {
+            console.error('Error updating note:', updateErr.message);
+            res.status(500).json({ error: 'Failed to update note' });
+          } else {
+            res.json({ message: 'Note updated successfully' });
+          }
+        });
+      }
+    }
+  });
+});
+
 
 // API route to update goal order
 app.put('/api/goals', (req, res) => {
