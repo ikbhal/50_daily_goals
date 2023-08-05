@@ -2,10 +2,13 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
+
 const port = 3015;
 
+app.use(cors()); 
 // Create a new SQLite database instance
 const db = new sqlite3.Database('./goals.db', (err) => {
   if (err) {
@@ -29,28 +32,69 @@ const db = new sqlite3.Database('./goals.db', (err) => {
 app.use(express.json());
 
 // API route to add a new goal
+// app.post('/api/goals', (req, res) => {
+//   const { name, notes, orderNumber } = req.body;
+//   console.log("req.body", req.body)
+//   console.log("name", name, ",", "notes", notes, ",", "orderNumber", orderNumber);
+
+//   if (!name ) {
+//     return res.status(400).json({ error: 'Name required' });
+//   }
+
+//   db.run(
+//     'INSERT INTO goals (name, notes, orderNumber) VALUES (?, ?, ?)',
+//     [name, notes, orderNumber],
+//     (err) => {
+//       if (err) {
+//         console.error('Error inserting goal:', err.message);
+//         res.status(500).json({ error: 'Failed to add the goal' });
+//       } else {
+//         res.json({ message: 'Goal added successfully' });
+//       }
+//     }
+//   );
+// });
+
 app.post('/api/goals', (req, res) => {
   const { name, notes, orderNumber } = req.body;
-  console.log("req.body", req.body)
+  console.log("req.body", req.body);
   console.log("name", name, ",", "notes", notes, ",", "orderNumber", orderNumber);
 
-  if (!name ) {
+  if (!name) {
     return res.status(400).json({ error: 'Name required' });
   }
 
   db.run(
     'INSERT INTO goals (name, notes, orderNumber) VALUES (?, ?, ?)',
     [name, notes, orderNumber],
-    (err) => {
+    function (err) {
       if (err) {
         console.error('Error inserting goal:', err.message);
-        res.status(500).json({ error: 'Failed to add the goal' });
-      } else {
-        res.json({ message: 'Goal added successfully' });
+        return res.status(500).json({ error: 'Failed to add the goal' });
       }
+
+      const insertedGoalId = this.lastID;
+
+      db.get(
+        'SELECT * FROM goals WHERE id = ?',
+        [insertedGoalId],
+        (err, row) => {
+          if (err) {
+            console.error('Error fetching the inserted goal:', err.message);
+            return res.status(500).json({ error: 'Failed to fetch the inserted goal' });
+          }
+
+          if (!row) {
+            return res.status(404).json({ error: 'Inserted goal not found' });
+          }
+
+          res.json(row);
+        }
+      );
     }
   );
 });
+
 
 // API route to delete a goal
 app.delete('/api/goals/:id', (req, res) => {

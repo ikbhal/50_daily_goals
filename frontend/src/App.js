@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faStickyNote, faTrash , faPlus} from '@fortawesome/free-solid-svg-icons';
+import axios from 'axios';
 
 const Container = styled.div`
   max-width: 800px;
@@ -115,45 +116,111 @@ const App = () => {
   const [showNotes, setShowNotes] = useState(false);
   const [focusedGoalIndex, setFocusedGoalIndex] = useState(null); // New state variable
 
-
   useEffect(() => {
-    // Retrieve goals from localStorage if they exist
-    const storedGoals = localStorage.getItem('dailyGoals');
-    if (storedGoals) {
-      setGoals(JSON.parse(storedGoals));
-    }
+    // Fetch goals from the backend API
+    axios.get('http://localhost:3015/api/goals')
+      .then((response) => {
+        setGoals(response.data);
+      })
+      .catch((error) => {
+        console.error('Error fetching goals:', error);
+        // Handle the error, e.g., show an error message or set default goals
+      });
   }, []);
 
   const addGoal = () => {
+    debugger;
     if (newGoal.trim() === '') return;
-
+  
     if (goals.length >= 50) {
       alert('You have reached the maximum limit of 50 daily goals.');
       return;
     }
-
-    setGoals([...goals, { text: newGoal, completed: false, note: '' }]);
-    setNewGoal('');
+  
+    const newGoalData = {
+      name: newGoal,
+      notes: '',
+      orderNumber: goals.length, // Assuming orderNumber should be the index in the goals array
+    };
+  
+    axios.post('http://localhost:3015/api/goals', newGoalData)
+      .then((response) => {
+        // Upon successful addition on the server, add the new goal to the state
+        setGoals([...goals, response.data]);
+        setNewGoal('');
+      })
+      .catch((error) => {
+        console.error('Error adding new goal:', error);
+        // Handle the error, e.g., show an error message
+      });
   };
-
+  
   const deleteGoal = (index) => {
-    const updatedGoals = [...goals];
-    updatedGoals.splice(index, 1);
-    setGoals(updatedGoals);
+    debugger;
+    const goalId = goals[index].id; // Assuming the goal has an "id" property received from the server
+  
+    // Send a DELETE request to the server to delete the goal
+    axios.delete(`http://localhost:3015/api/goals/${goalId}`)
+      .then((response) => {
+        // Upon successful deletion on the server, remove the goal from the state
+        const updatedGoals = goals.filter((goal) => goal.id !== goalId);
+        setGoals(updatedGoals);
+      })
+      .catch((error) => {
+        console.error('Error deleting goal:', error);
+        // Handle the error, e.g., show an alert with the error message
+        alert('Failed to delete the goal. Please try again later.');
+      });
   };
+  
 
   const toggleComplete = (index) => {
+    debugger;
+    const goalId = goals[index].id; // Assuming the goal has an "id" property received from the server
+  
     const updatedGoals = [...goals];
     updatedGoals[index].completed = !updatedGoals[index].completed;
     setGoals(updatedGoals);
+  
+    // Send a PUT request to the server to update the completion status
+    axios.put(`http://localhost:3015/api/goals/${goalId}/toggledone`)
+      .then((response) => {
+        // Optionally, you can handle the response from the server
+        console.log('Goal completion status updated successfully:', response.data);
+      })
+      .catch((error) => {
+        console.error('Error updating goal completion status:', error);
+        // If there's an error, revert the changes in the state to the previous state
+        updatedGoals[index].completed = !updatedGoals[index].completed;
+        setGoals(updatedGoals);
+      });
   };
 
   const handleNoteChange = (index, note) => {
     const updatedGoals = [...goals];
-    updatedGoals[index].note = note;
+    updatedGoals[index].notes = note;
     setGoals(updatedGoals);
   };
 
+  const handleGoalNotesBlur = (index) => {
+     // Check if the goal exists before accessing the id property
+    if (!goals[index]) {
+      return;
+    }
+    const goalId = goals[index].id;
+    const updatedNotes = goals[index].note;
+    
+    axios.put(`http://localhost:3015/api/goals/${goalId}/notes`, { notes: updatedNotes })
+      .then((response) => {
+        // Optionally, you can handle the response from the server
+        console.log('Notes updated successfully:', response.data);
+      })
+      .catch((error) => {
+        console.error('Error updating notes:', error);
+        alert(error.message);
+      });
+  };
+  
   const handleDragStart = (index, e) => {
     e.dataTransfer.setData('text/plain', index);
   };
@@ -170,14 +237,12 @@ const App = () => {
   };
 
   const handleDragOver = (e) => {
+    // Prevent updating the state when interacting with textarea
+    if (document.activeElement.tagName.toLowerCase() === 'textarea') {
+      return;
+    }
     e.preventDefault();
   };
-
-  // const handleToggleNotes = (index) => {
-  //   const updatedGoals = [...goals];
-  //   updatedGoals[index].showNote = !updatedGoals[index].showNote;
-  //   setGoals(updatedGoals);
-  // };
 
   const handleToggleNotes = (index) => {
     const updatedGoals = [...goals];
@@ -188,9 +253,9 @@ const App = () => {
     setFocusedGoalIndex(index);
   };
   
-  const handleGoalNotesBlur = () => {
-    setFocusedGoalIndex(null);
-  };
+  // const handleGoalNotesBlur = () => {
+  //   setFocusedGoalIndex(null);
+  // };
 
   useEffect(() => {
     // Store goals in localStorage whenever there is a change
@@ -247,16 +312,18 @@ const App = () => {
                     checked={goal.completed}
                     onChange={() => toggleComplete(index)}
                   />
-                  {goal.text}
+                  {goal.name}
                 </label>
               </Goal>
               
               {goal.showNote && (
                 <GoalNotes>
                   <textarea
-                    value={goal.note}
+                    value={goal.notes}
                     onChange={(e) => handleNoteChange(index, e.target.value)}
                     onBlur={handleGoalNotesBlur} 
+                    // onBlur={handleNoteBlur}
+                    // onBlur={(e) => handleNoteChange(index, e.target.value)}
                     rows="2"
                     cols="30"
                     placeholder="Add a note"
